@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+:root {
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Dark theme — MAAR's default: deep space navy with a warm gold seam. */
+  --maar-base: 5 7 10;
+  --maar-surface: 12 15 21;
+  --maar-surface-2: 18 21 29;
+  --maar-border: 35 39 51;
+  --maar-border-strong: 58 64 81;
+  --maar-ink: 243 241 234;
+  --maar-ink-muted: 156 162 174;
+  --maar-ink-faint: 102 107 119;
+  --maar-gold: 217 179 108;
+  --maar-gold-soft: 232 199 138;
+  --maar-ice: 143 182 217;
+}
+
+:root.light {
+  --maar-base: 250 249 246;
+  --maar-surface: 255 255 255;
+  --maar-surface-2: 244 242 237;
+  --maar-border: 226 223 214;
+  --maar-border-strong: 202 198 188;
+  --maar-ink: 22 24 28;
+  --maar-ink-muted: 92 97 107;
+  --maar-ink-faint: 143 147 155;
+  --maar-gold: 168 121 42;
+  --maar-gold-soft: 189 145 68;
+  --maar-ice: 47 99 145;
+}
+
+* {
+  border-color: rgb(var(--maar-border));
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--maar-base));
+  color: rgb(var(--maar-ink));
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: rgb(var(--maar-gold) / 0.28);
+  color: rgb(var(--maar-ink));
+}
+
+/* Slim, quiet scrollbars that fit the surfaces instead of fighting them. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--maar-border-strong)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--maar-border-strong));
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Visible, deliberate focus ring — never suppressed. */
+:focus-visible {
+  outline: 2px solid rgb(var(--maar-gold));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* -- Prose styling for streamed markdown responses -------------------- */
+.maar-prose {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: rgb(var(--maar-ink));
+}
+.maar-prose > * + * {
+  margin-top: 0.9em;
+}
+.maar-prose h1,
+.maar-prose h2,
+.maar-prose h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.4em;
+}
+.maar-prose h1 { font-size: 1.35em; }
+.maar-prose h2 { font-size: 1.18em; }
+.maar-prose h3 { font-size: 1.05em; }
+.maar-prose ul,
+.maar-prose ol {
+  padding-left: 1.4em;
+}
+.maar-prose ul { list-style: disc; }
+.maar-prose ol { list-style: decimal; }
+.maar-prose li + li { margin-top: 0.35em; }
+.maar-prose blockquote {
+  border-left: 2px solid rgb(var(--maar-gold) / 0.6);
+  padding-left: 1em;
+  color: rgb(var(--maar-ink-muted));
+}
+.maar-prose a {
+  color: rgb(var(--maar-ice));
+  text-underline-offset: 3px;
+}
+.maar-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.maar-prose th,
+.maar-prose td {
+  border: 1px solid rgb(var(--maar-border));
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.maar-prose th {
+  background: rgb(var(--maar-surface-2));
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+/* -- Syntax highlighting tokens, hand-tuned to the MAAR palette -------- */
+.hljs-line .hljs-keyword,
+.hljs-line .hljs-selector-tag,
+.hljs-line .hljs-literal { color: rgb(var(--maar-gold-soft)); }
+.hljs-line .hljs-string,
+.hljs-line .hljs-attr,
+.hljs-line .hljs-regexp { color: #B7D8A8; }
+.hljs-line .hljs-comment,
+.hljs-line .hljs-quote { color: rgb(var(--maar-ink-faint)); font-style: italic; }
+.hljs-line .hljs-number,
+.hljs-line .hljs-symbol { color: rgb(var(--maar-ice)); }
+.hljs-line .hljs-title,
+.hljs-line .hljs-title.function_,
+.hljs-line .hljs-section { color: #E3B3C9; }
+.hljs-line .hljs-built_in,
+.hljs-line .hljs-type,
+.hljs-line .hljs-class .hljs-title { color: rgb(var(--maar-gold)); }
+.hljs-line .hljs-tag,
+.hljs-line .hljs-name { color: rgb(var(--maar-ice)); }
+.hljs-line .hljs-punctuation,
+.hljs-line .hljs-operator { color: rgb(var(--maar-ink-muted)); }
+
+.maar-prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: rgb(var(--maar-surface-2));
+  border: 1px solid rgb(var(--maar-border));
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+}

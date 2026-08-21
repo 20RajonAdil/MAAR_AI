@@ -1,0 +1,18 @@
+<svg width="220" height="64" viewBox="0 0 220 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="maarLogoTitle">
+  <title id="maarLogoTitle">MAAR AI</title>
+  <defs>
+    <linearGradient id="seamGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3D9A6"/>
+      <stop offset="45%" stop-color="#D9B36C"/>
+      <stop offset="100%" stop-color="#8FB6D9"/>
+    </linearGradient>
+  </defs>
+  <g>
+    <!-- Signature mark: a vertical seam of light with a flare, echoing the MAAR skyline motif -->
+    <path d="M16 6 L16.6 6 L19 24 L17 24 L16.3 30 L15.7 30 L15 24 L13 24 Z" fill="url(#seamGrad)"/>
+    <line x1="16" y1="30" x2="16" y2="58" stroke="url(#seamGrad)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="16" cy="58" r="2.5" fill="#8FB6D9"/>
+  </g>
+  <text x="34" y="30" font-family="'Space Grotesk', sans-serif" font-size="21" font-weight="600" letter-spacing="0.5" fill="#F3F1EA">MAAR</text>
+  <text x="34" y="47" font-family="'Inter', sans-serif" font-size="10.5" letter-spacing="3.5" fill="#9AA0AC">A I &#8201;&#8226;&#8201; LOCAL-FIRST</text>
+</svg>
