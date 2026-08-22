@@ -54,7 +54,7 @@ export function EmptyState({ onSuggestion }: Props) {
         <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">
           Ask MAAR anything
         </h1>
-        <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-white/90 sm:text-base">
           A private AI workspace. Your conversations stay on this device.
         </p>
       </div>
