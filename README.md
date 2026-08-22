@@ -18,7 +18,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open https://maar-ai.vercel.app/
 
 ## Scripts
 
