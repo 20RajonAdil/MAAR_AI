@@ -43,7 +43,7 @@ export function BackgroundLayer({ enabled, opacity, blur, overlay }: BackgroundL
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-cover object-[78%_58%] sm:object-[70%_50%] lg:object-center"
           placeholder="blur"
           blurDataURL="/background-tiny.jpg"
         />
