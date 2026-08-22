@@ -126,6 +126,18 @@ the browser's built-in Web Speech API (`speechSynthesis`) — entirely
 client-side, no API key or network call involved. Voice **input** (talking
 to MAAR) isn't wired up yet; see `NEXT_STEPS.md`.
 
+## Skills (upload custom instructions)
+
+Settings → Skills lets you upload a plain-text `.md` or `.txt` file with
+instructions, a style guide, or domain knowledge (capped at 200KB). Every
+*enabled* skill is sent to the model as a system message on every request
+in `useConversations.sendMessage` — see `src/lib/db/skills.ts`.
+
+This deliberately only ever injects text as instructions; it does not
+execute anything from the uploaded file. Running arbitrary code from a
+user-uploaded file would be a real security risk, so that's out of scope
+by design, not an oversight.
+
 ## Security
 
 - `NVIDIA_API_KEY` and `OPENROUTER_API_KEY` are each read only inside their

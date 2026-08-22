@@ -42,9 +42,10 @@ export async function estimateStorageUsage(): Promise<{ usageBytes: number; quot
 
 export async function clearAllLocalData(): Promise<void> {
   const db = getDb();
-  await db.transaction('rw', db.conversations, db.messages, db.settings, async () => {
+  await db.transaction('rw', db.conversations, db.messages, db.settings, db.skills, async () => {
     await db.conversations.clear();
     await db.messages.clear();
     await db.settings.clear();
+    await db.skills.clear();
   });
 }

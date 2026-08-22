@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
 import { StorageInfo } from './StorageInfo';
+import { SkillsPanel } from './SkillsPanel';
 import type { MaarSettings } from '@/lib/db/settings';
 import { clearAllLocalData } from '@/lib/db/settings';
 import { exportAllConversationsJSON, downloadFile, importConversationsJSON, type MaarExportFile } from '@/lib/utils/export';
@@ -20,7 +21,7 @@ interface Props {
   onDataCleared: () => void;
 }
 
-type Tab = 'general' | 'appearance' | 'privacy';
+type Tab = 'general' | 'appearance' | 'skills' | 'privacy';
 
 export function SettingsPanel({ open, onOpenChange, settings, onUpdate, onDataCleared }: Props) {
   const [tab, setTab] = useState<Tab>('general');
@@ -61,7 +62,7 @@ export function SettingsPanel({ open, onOpenChange, settings, onUpdate, onDataCl
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Settings" description="Everything here is stored locally in your browser.">
       <div className="mb-4 flex gap-1 border-b border-border">
-        {(['general', 'appearance', 'privacy'] as Tab[]).map((t) => (
+        {(['general', 'appearance', 'skills', 'privacy'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -193,6 +194,8 @@ export function SettingsPanel({ open, onOpenChange, settings, onUpdate, onDataCl
           </div>
         </div>
       )}
+
+      {tab === 'skills' && <SkillsPanel />}
 
       {tab === 'privacy' && (
         <div className="flex flex-col gap-5">

@@ -1,21 +1,23 @@
 'use client';
 
 import { useCallback, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
-import { ArrowUp, ImagePlus, Paperclip, Square, X } from 'lucide-react';
+import { ArrowUp, ImagePlus, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import { ModelSelector } from './ModelSelector';
 import { AttachmentPreview } from './AttachmentPreview';
 import { getModel, modelSupports } from '@/lib/ai/models';
 import type { ChatAttachment } from '@/lib/ai/types';
-import { cn } from '@/lib/utils/cn';
+import { cn, formatContextWindow } from '@/lib/utils/cn';
 
 interface Props {
   modelId: string;
   onModelChange: (id: string) => void;
   isGenerating: boolean;
   sendOnEnter: boolean;
+  activeSkillCount: number;
   onSend: (content: string, attachments: ChatAttachment[]) => void;
   onGenerateImage: (prompt: string) => void;
   onStop: () => void;
+  onOpenSkills: () => void;
 }
 
 function kindForMime(mime: string): ChatAttachment['kind'] {
@@ -30,9 +32,11 @@ export function Composer({
   onModelChange,
   isGenerating,
   sendOnEnter,
+  activeSkillCount,
   onSend,
   onGenerateImage,
   onStop,
+  onOpenSkills,
 }: Props) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -130,8 +134,19 @@ export function Composer({
           )}
           {model && !imageMode && (
             <span className="hidden text-xs text-ink-faint sm:inline">
-              {model.capabilities.contextWindow.toLocaleString()} token context
+              {formatContextWindow(model.capabilities.contextWindow)} token context
             </span>
+          )}
+          {activeSkillCount > 0 && !imageMode && (
+            <button
+              type="button"
+              onClick={onOpenSkills}
+              title={`${activeSkillCount} skill${activeSkillCount === 1 ? '' : 's'} active — click to manage`}
+              className="flex items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold transition-colors hover:bg-gold/15"
+            >
+              <Sparkles size={11} />
+              {activeSkillCount}
+            </button>
           )}
           <button
             type="button"

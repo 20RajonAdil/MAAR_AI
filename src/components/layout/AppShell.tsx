@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WifiOff } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { BackgroundLayer } from '@/components/background/BackgroundLayer';
@@ -12,6 +12,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useConversations } from '@/hooks/useConversations';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { DEFAULT_MODEL_ID } from '@/lib/ai/models';
+import { listSkills } from '@/lib/db/skills';
 import type { ChatAttachment } from '@/lib/ai/types';
 
 export function AppShell() {
@@ -19,7 +20,16 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [modelId, setModelId] = useState(DEFAULT_MODEL_ID);
+  const [activeSkillCount, setActiveSkillCount] = useState(0);
   const isOnline = useOnlineStatus();
+
+  const refreshActiveSkillCount = () => {
+    listSkills().then((skills) => setActiveSkillCount(skills.filter((s) => s.enabled).length));
+  };
+
+  useEffect(() => {
+    refreshActiveSkillCount();
+  }, []);
 
   const {
     conversations,
@@ -91,16 +101,21 @@ export function AppShell() {
             onModelChange={setModelId}
             isGenerating={isGenerating}
             sendOnEnter={settings.sendOnEnter}
+            activeSkillCount={activeSkillCount}
             onSend={handleSend}
             onGenerateImage={sendImageMessage}
             onStop={stopGenerating}
+            onOpenSkills={() => setSettingsOpen(true)}
           />
         </div>
       </div>
 
       <SettingsPanel
         open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        onOpenChange={(open) => {
+          setSettingsOpen(open);
+          if (!open) refreshActiveSkillCount();
+        }}
         settings={settings}
         onUpdate={updateSettings}
         onDataCleared={() => window.location.reload()}

@@ -18,6 +18,7 @@ import { streamChat } from '@/lib/ai/client';
 import { generateImageClient } from '@/lib/ai/image-client';
 import { friendlyErrorMessage } from '@/lib/ai/errors';
 import { getModel, IMAGE_MODEL_ID } from '@/lib/ai/models';
+import { buildActiveSkillsSystemPrompt } from '@/lib/db/skills';
 
 // Errors that mean "this model is temporarily unable to serve requests"
 // (as opposed to a config problem like a missing key) are the ones worth
@@ -129,6 +130,11 @@ export function useConversations(defaultModelId: string) {
         attachments: m.attachments,
       }));
 
+      const skillsPrompt = await buildActiveSkillsSystemPrompt();
+      const messagesForRequest = skillsPrompt
+        ? [{ role: 'system' as const, content: skillsPrompt }, ...history]
+        : history;
+
       const controller = new AbortController();
       abortRef.current = controller;
       setIsGenerating(true);
@@ -158,7 +164,7 @@ export function useConversations(defaultModelId: string) {
         new Promise((resolve) => {
           finalModelId = streamModelId;
           streamChat(
-            { model: streamModelId, messages: history },
+            { model: streamModelId, messages: messagesForRequest },
             {
               onDelta: (text) => {
                 accumulated += text;
