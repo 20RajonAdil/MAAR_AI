@@ -6,7 +6,7 @@ import type { MaarErrorCode } from './types';
  */
 const FRIENDLY_MESSAGES: Record<MaarErrorCode, string> = {
   'no-api-key':
-    'MAAR isn’t connected to NVIDIA yet. Add NVIDIA_API_KEY to your server environment and restart the app.',
+    'MAAR isn’t connected to this model’s provider yet. Add the required API key to your server environment and restart the app.',
   unauthorized:
     'NVIDIA rejected the request. The API key may be invalid or expired — check your server environment.',
   'rate-limited': 'NVIDIA is rate-limiting requests right now. Wait a few seconds and try again.',

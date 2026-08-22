@@ -73,20 +73,39 @@ public/
 
 ## Adding a new NVIDIA NIM model
 
-Add one entry to `src/lib/ai/models.ts` with accurate `capabilities`. That's
-it — the model selector, the multimodal composer gating (e.g. disabling image
-attachments for text-only models), and the API route all read from that one
-file. Never mark a capability `true` unless the model actually supports it.
+Add one entry to `src/lib/ai/models.ts` with `provider: 'nvidia-nim'` and
+accurate `capabilities`. That's it — the model selector, the multimodal
+composer gating (e.g. disabling image attachments for text-only models),
+and the API route all read from that one file. Never mark a capability
+`true` unless the model actually supports it.
+
+## Using OpenRouter models alongside NVIDIA
+
+MAAR ships with OpenRouter wired in as a second provider behind the same
+abstraction layer (`src/lib/ai/providers/openrouter.ts`), so models from
+both show up together in the model selector, grouped by provider.
+
+1. Get a key from https://openrouter.ai/keys
+2. Set `OPENROUTER_API_KEY` in `.env.local`
+3. Add or adjust entries in `src/lib/ai/models.ts` with
+   `provider: 'openrouter'` — the `id` must match OpenRouter's model id
+   exactly (see https://openrouter.ai/models)
+
+Both providers speak the same OpenAI-compatible streaming shape, so adding
+a third provider later just means a new file in `src/lib/ai/providers/`
+plus one new case in the dispatcher (`src/lib/ai/provider.ts`) — nothing
+in the UI needs to change.
 
 ## Security
 
-- `NVIDIA_API_KEY` is read only in `src/lib/ai/provider.ts`, which starts with
-  `import 'server-only'` — importing it from a client component is a
-  **build-time error**, not just a lint warning.
-- The key is never prefixed with `NEXT_PUBLIC_`, so Next.js never inlines it
-  into a client bundle. This was verified by grepping the production
-  `.next/static` output for the key value after a build — it does not appear.
-- `.env.local` is git-ignored. Only `.env.example` (with a placeholder) is
+- `NVIDIA_API_KEY` and `OPENROUTER_API_KEY` are each read only inside their
+  own file under `src/lib/ai/providers/`, and every file in that chain
+  starts with `import 'server-only'` — importing one from a client
+  component is a **build-time error**, not just a lint warning.
+- Neither key is ever prefixed with `NEXT_PUBLIC_`, so Next.js never inlines
+  them into a client bundle. This was verified by grepping the production
+  `.next/static` output for both key values after a build — neither appears.
+- `.env.local` is git-ignored. Only `.env.example` (with placeholders) is
   committed.
 
 ## Replacing the background image

@@ -25,7 +25,7 @@ export interface ModelCapabilities {
 export interface ModelDefinition {
   id: string; // NVIDIA NIM model id, e.g. "deepseek-ai/deepseek-v4-flash"
   label: string; // human-facing name
-  provider: 'nvidia-nim';
+  provider: 'nvidia-nim' | 'openrouter'; // add new providers here as the union grows
   description: string;
   capabilities: ModelCapabilities;
 }

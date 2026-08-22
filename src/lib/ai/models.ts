@@ -64,6 +64,51 @@ export const MODELS: ModelDefinition[] = [
       contextWindow: 32_000,
     },
   },
+
+  // --- OpenRouter models --------------------------------------------------
+  // OpenRouter proxies many providers behind one OpenAI-compatible API.
+  // Capabilities below reflect each model's own documented support — verify
+  // against https://openrouter.ai/models before enabling a new one, since
+  // OpenRouter's catalog changes independently of this file.
+  {
+    id: 'openai/gpt-4o-mini',
+    label: 'GPT-4o mini',
+    provider: 'openrouter',
+    description: 'Fast, inexpensive general-purpose model with vision support, via OpenRouter.',
+    capabilities: {
+      inputs: ['text', 'image-input'],
+      streaming: true,
+      reasoning: false,
+      coding: true,
+      contextWindow: 128_000,
+    },
+  },
+  {
+    id: 'anthropic/claude-3.5-sonnet',
+    label: 'Claude 3.5 Sonnet',
+    provider: 'openrouter',
+    description: 'Strong all-round reasoning, writing, and coding model, via OpenRouter.',
+    capabilities: {
+      inputs: ['text', 'image-input'],
+      streaming: true,
+      reasoning: false,
+      coding: true,
+      contextWindow: 200_000,
+    },
+  },
+  {
+    id: 'google/gemini-2.0-flash-001',
+    label: 'Gemini 2.0 Flash',
+    provider: 'openrouter',
+    description: 'Fast multimodal model with a very large context window, via OpenRouter.',
+    capabilities: {
+      inputs: ['text', 'image-input'],
+      streaming: true,
+      reasoning: false,
+      coding: true,
+      contextWindow: 1_000_000,
+    },
+  },
 ];
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;
