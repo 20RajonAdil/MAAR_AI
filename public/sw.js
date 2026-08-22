@@ -7,7 +7,7 @@
  * caches /api/* — generation always requires the network, and we never
  * want a stale streamed response served from cache.
  */
-const CACHE_NAME = 'maar-ai-shell-v1';
+const CACHE_NAME = 'maar-ai-shell-v2';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
