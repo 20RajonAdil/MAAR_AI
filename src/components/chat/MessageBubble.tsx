@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Download } from 'lucide-react';
 import type { ChatMessage } from '@/lib/ai/types';
+import { getModel } from '@/lib/ai/models';
 import { CodeBlock } from './CodeBlock';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { MessageActions } from './MessageActions';
@@ -17,10 +18,19 @@ interface Props {
   onRegenerate?: () => void;
 }
 
+function downloadImage(dataUrl: string, filename: string) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
 export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const isUser = message.role === 'user';
+  const isImageGen = !isUser && Boolean(getModel(message.model ?? '')?.capabilities.outputs?.includes('image'));
+  const generatedImages = isImageGen ? message.attachments?.filter((a) => a.kind === 'image') ?? [] : [];
 
   if (editing) {
     return (
@@ -63,14 +73,31 @@ export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
         <div
           className={cn(
             'max-w-[85%] rounded-xl2 px-4 py-2.5',
-            isUser
-              ? 'bg-base-raised2 border border-border text-ink'
-              : 'bg-transparent text-ink',
+            isUser ? 'bg-base-raised2 border border-border text-ink' : 'bg-transparent text-ink',
           )}
         >
-          {message.attachments && message.attachments.length > 0 && (
+          {message.attachments && message.attachments.length > 0 && !isImageGen && (
             <div className="mb-2">
               <AttachmentPreview attachments={message.attachments} />
+            </div>
+          )}
+
+          {isImageGen && generatedImages.length > 0 && (
+            <div className="mb-2 flex flex-col gap-2">
+              {generatedImages.map((img) => (
+                <div key={img.id} className="group/img relative overflow-hidden rounded-xl2 border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.dataUrl} alt={message.content || 'Generated image'} className="max-w-full sm:max-w-sm" />
+                  <button
+                    type="button"
+                    onClick={() => downloadImage(img.dataUrl, img.name)}
+                    className="absolute right-2 top-2 flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 text-xs text-white opacity-0 backdrop-blur-sm transition-opacity group-hover/img:opacity-100"
+                    aria-label="Download image"
+                  >
+                    <Download size={13} /> Download
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -81,6 +108,10 @@ export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
             </div>
           ) : isUser ? (
             <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{message.content}</p>
+          ) : isImageGen ? (
+            message.isStreaming ? (
+              <ThinkingIndicator label="Generating image" />
+            ) : null
           ) : (
             <div className="maar-prose">
               {message.content ? (
@@ -108,9 +139,7 @@ export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
             </div>
           )}
 
-          {message.stopped && (
-            <p className="mt-1 text-xs italic text-ink-faint">Generation stopped</p>
-          )}
+          {message.stopped && <p className="mt-1 text-xs italic text-ink-faint">Generation stopped</p>}
         </div>
 
         {!message.isStreaming && !message.error && (message.content || message.attachments?.length) && (
@@ -118,7 +147,7 @@ export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
             role={message.role === 'system' ? 'assistant' : message.role}
             content={message.content}
             onEdit={isUser ? () => setEditing(true) : undefined}
-            onRegenerate={!isUser ? onRegenerate : undefined}
+            onRegenerate={!isUser && !isImageGen ? onRegenerate : undefined}
           />
         )}
       </div>

@@ -71,6 +71,31 @@ doesn't work.
   widening the `accept` attribute and confirming NVIDIA's expected payload
   shape for that media type is a small, contained change in `Composer.tsx`
   and `provider.ts`.
+- **Voice input** (talking to MAAR instead of typing): not implemented.
+  Read-aloud (voice *output*) is real and works today via the browser's
+  Web Speech API. Voice input would need microphone capture in the
+  composer plus a speech-to-text model — OpenRouter/NVIDIA both list ASR
+  models (e.g. Qwen3 ASR) that could back this the same way image
+  generation is wired up, but it's a separate contained feature, not done
+  here.
+- **Image generation is scoped to one model.** `google/gemini-2.5-flash-image`
+  is wired up end-to-end (composer toggle → `/api/image` → OpenRouter's
+  `/chat/completions` with `modalities: ["image","text"]` → rendered,
+  downloadable image in the chat). I could not test a live call against
+  OpenRouter from this sandbox (network egress is restricted to package
+  registries), so the response-parsing logic in
+  `providers/openrouter-image.ts` defensively handles a couple of likely
+  response shapes for the `images` field, based on OpenRouter's
+  documentation — do one real test after adding your key. Adding more
+  image models is one more entry in `models.ts` with
+  `capabilities.outputs: ['image']`.
+- **Automatic model fallback** retries against `fallbackModelId` only on
+  `rate-limited` / `model-unavailable` errors, capped at one hop, to avoid
+  silently cascading through every model in the registry. The fallback
+  chains in `models.ts` are my best judgment for "similar capability,
+  different provider" pairings — adjust them if you'd prefer a different
+  order (e.g. always falling back to a free model to guarantee the
+  conversation never hard-stops).
 - **cuOpt skill**: the brief's instruction to install
   `npx skills add NVIDIA/skills --skill cuopt-developer --agent claude-code`
   is a Claude Code CLI step for *your* local environment, not something this
@@ -92,7 +117,7 @@ doesn't work.
 3. `npm run build && npm run start`, then do one real chat exchange to
    confirm streaming works end-to-end against NVIDIA
 4. Update `metadataBase` in `src/app/layout.tsx` and the `Sitemap:` line in
-   `public/robots.txt` from the placeholder `https://maar.ai` to your real
+   `public/robots.txt` from the placeholder `https://maar-ai.vercel.app` to your real
    domain
 5. If deploying somewhere other than Vercel/a Node host, confirm your
    platform supports the Edge/Node streaming response used in

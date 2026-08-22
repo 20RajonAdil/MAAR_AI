@@ -4,7 +4,7 @@ import { ThemeScript } from '@/components/layout/ThemeScript';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://maar.ai'),
+  metadataBase: new URL('https://maar-ai.vercel.app'),
   title: {
     default: 'MAAR AI — A private, local-first AI workspace',
     template: '%s · MAAR AI',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     description:
       'A premium AI workspace that keeps your conversations on your device. Powered by NVIDIA NIM models.',
     siteName: 'MAAR AI',
-    url: 'https://maar.ai',
+    url: 'https://maar-ai.vercel.app',
   },
   twitter: {
     card: 'summary_large_image',

@@ -15,6 +15,7 @@ const FRIENDLY_MESSAGES: Record<MaarErrorCode, string> = {
   timeout: 'The request took too long and timed out. Try again, or try a shorter prompt.',
   'unsupported-input': 'The selected model doesn’t support this kind of attachment. Try a different model.',
   'context-too-large': 'This conversation is too long for the selected model. Start a new chat or trim earlier messages.',
+  'image-generation-failed': 'MAAR couldn\u2019t generate an image for that prompt. Try rephrasing it or try again in a moment.',
   unknown: 'Something went wrong generating a response. Please try again.',
 };
 

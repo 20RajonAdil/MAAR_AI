@@ -1,8 +1,8 @@
 'use client';
 
 import * as RadixDropdown from '@radix-ui/react-dropdown-menu';
-import { Brain, Check, ChevronDown, Code2, Image as ImageIcon, Mic, Zap } from 'lucide-react';
-import { MODELS, getModel } from '@/lib/ai/models';
+import { Brain, Check, ChevronDown, Code2, Gift, Image as ImageIcon, Mic, Zap } from 'lucide-react';
+import { chatModels, getModel } from '@/lib/ai/models';
 import type { ModelDefinition } from '@/lib/ai/types';
 import { cn } from '@/lib/utils/cn';
 
@@ -11,17 +11,28 @@ interface Props {
   onChange: (modelId: string) => void;
 }
 
-const PROVIDER_LABELS: Record<ModelDefinition['provider'], string> = {
-  'nvidia-nim': 'NVIDIA NIM models',
-  openrouter: 'OpenRouter models',
+type GroupKey = 'free' | 'nvidia-nim' | 'openrouter';
+
+const GROUP_LABELS: Record<GroupKey, string> = {
+  free: 'Free models',
+  'nvidia-nim': 'NVIDIA Agent',
+  openrouter: 'OpenRouter Agent',
 };
 
-function CapabilityIcons({ modelId }: { modelId: string }) {
-  const model = getModel(modelId);
-  if (!model) return null;
+function groupFor(model: ModelDefinition): GroupKey {
+  if (model.free) return 'free';
+  return model.provider;
+}
+
+function CapabilityIcons({ model }: { model: ModelDefinition }) {
   const { capabilities } = model;
   return (
     <div className="flex items-center gap-1.5 text-ink-faint">
+      {model.free && (
+        <span title="Free to use">
+          <Gift size={12} />
+        </span>
+      )}
       {capabilities.streaming && (
         <span title="Streams responses">
           <Zap size={12} />
@@ -53,8 +64,11 @@ function CapabilityIcons({ modelId }: { modelId: string }) {
 
 export function ModelSelector({ value, onChange }: Props) {
   const active = getModel(value);
-  const groups = (Object.keys(PROVIDER_LABELS) as ModelDefinition['provider'][])
-    .map((provider) => ({ provider, models: MODELS.filter((m) => m.provider === provider) }))
+  const models = chatModels();
+
+  const groupOrder: GroupKey[] = ['free', 'nvidia-nim', 'openrouter'];
+  const groups = groupOrder
+    .map((key) => ({ key, models: models.filter((m) => groupFor(m) === key) }))
     .filter((g) => g.models.length > 0);
 
   return (
@@ -76,12 +90,12 @@ export function ModelSelector({ value, onChange }: Props) {
           sideOffset={8}
           className="z-50 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-border bg-base-raised p-1.5 shadow-panel"
         >
-          {groups.map(({ provider, models }) => (
-            <div key={provider}>
+          {groups.map(({ key, models: groupModels }) => (
+            <div key={key}>
               <div className="px-2.5 py-1.5 text-[11px] uppercase tracking-wider text-ink-faint">
-                {PROVIDER_LABELS[provider]}
+                {GROUP_LABELS[key]}
               </div>
-              {models.map((model) => (
+              {groupModels.map((model) => (
                 <RadixDropdown.Item
                   key={model.id}
                   onSelect={() => onChange(model.id)}
@@ -95,9 +109,12 @@ export function ModelSelector({ value, onChange }: Props) {
                       {model.id === value && <Check size={13} className="text-gold" />}
                       {model.label}
                     </span>
-                    <CapabilityIcons modelId={model.id} />
+                    <CapabilityIcons model={model} />
                   </div>
                   <span className="pl-0 text-xs leading-snug text-ink-muted">{model.description}</span>
+                  <span className="mt-0.5 inline-flex w-fit items-center rounded-full border border-border bg-base-raised2/60 px-2 py-0.5 text-[10px] font-medium text-ink-muted">
+                    Best for: {model.bestFor}
+                  </span>
                 </RadixDropdown.Item>
               ))}
             </div>
@@ -107,4 +124,3 @@ export function ModelSelector({ value, onChange }: Props) {
     </RadixDropdown.Root>
   );
 }
-

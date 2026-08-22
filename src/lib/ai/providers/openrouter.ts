@@ -26,7 +26,7 @@ export async function* streamOpenRouterCompletion(
       // OpenRouter uses these to attribute usage to your app in their
       // dashboard and (for some free-tier models) to apply rate limits.
       // Both are optional but recommended by OpenRouter's docs.
-      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://maar.ai',
+      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://maar-ai.vercel.app',
       'X-Title': 'MAAR AI',
     },
   });

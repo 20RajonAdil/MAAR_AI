@@ -32,6 +32,7 @@ export function AppShell() {
     deleteConversationById,
     archiveConversation,
     sendMessage,
+    sendImageMessage,
     editAndResend,
     regenerate,
     stopGenerating,
@@ -91,6 +92,7 @@ export function AppShell() {
             isGenerating={isGenerating}
             sendOnEnter={settings.sendOnEnter}
             onSend={handleSend}
+            onGenerateImage={sendImageMessage}
             onStop={stopGenerating}
           />
         </div>

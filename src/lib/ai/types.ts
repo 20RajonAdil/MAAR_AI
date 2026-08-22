@@ -12,6 +12,9 @@ export type ModelModality = 'text' | 'image-input' | 'audio-input' | 'video-inpu
 export interface ModelCapabilities {
   /** What kinds of input this model actually accepts. 'text' is implicit for all. */
   inputs: ModelModality[];
+  /** What this model produces. Defaults to ['text'] when omitted — only set
+   * this when a model can also produce images (image generation). */
+  outputs?: ('text' | 'image')[];
   /** Whether the model streams tokens back progressively. */
   streaming: boolean;
   /** Whether the model exposes a distinct "reasoning" phase (shown as a status, never the raw trace). */
@@ -27,6 +30,15 @@ export interface ModelDefinition {
   label: string; // human-facing name
   provider: 'nvidia-nim' | 'openrouter'; // add new providers here as the union grows
   description: string;
+  /** Short, plain-language "best for" tag shown as a badge in the model picker. */
+  bestFor: string;
+  /** True for models with no per-token cost (subject to the provider's own free-tier limits). */
+  free?: boolean;
+  /** If this model errors with a rate-limit or availability problem, MAAR
+   * automatically retries the same request once against this model instead,
+   * and tells the person it switched. Point it at a capability-equivalent
+   * model, ideally on a different provider for real redundancy. */
+  fallbackModelId?: string;
   capabilities: ModelCapabilities;
 }
 
@@ -73,6 +85,7 @@ export type MaarErrorCode =
   | 'timeout'
   | 'unsupported-input'
   | 'context-too-large'
+  | 'image-generation-failed'
   | 'unknown';
 
 export interface CompletionRequest {

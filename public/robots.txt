@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://maar.ai/sitemap.xml
+Sitemap: https://maar-ai.vercel.app/sitemap.xml

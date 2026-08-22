@@ -96,6 +96,36 @@ a third provider later just means a new file in `src/lib/ai/providers/`
 plus one new case in the dispatcher (`src/lib/ai/provider.ts`) — nothing
 in the UI needs to change.
 
+The model picker groups every model into **Free models**, **NVIDIA Agent**,
+and **OpenRouter Agent**, and shows a short "Best for" tag on each one
+(coding, long-form writing, reasoning, etc.) so it's clear which model to
+reach for.
+
+## Automatic fallback when a model hits its limit
+
+Every model in `models.ts` can declare a `fallbackModelId` pointing at a
+capability-equivalent model — usually on the other provider, for real
+redundancy. If a request fails with a rate-limit or availability error
+mid-conversation, MAAR automatically retries the same message against the
+fallback once and adds a short note to the response ("Switched to …").
+No error is shown to the person unless the fallback also fails.
+
+## Image generation
+
+Toggle "Image" in the composer to switch it into image-generation mode.
+Prompts go to `google/gemini-2.5-flash-image` via OpenRouter's image
+generation support on `/chat/completions` (`modalities: ["image", "text"]`)
+— see `src/lib/ai/providers/openrouter-image.ts` and `src/app/api/image/route.ts`.
+Generated images are downloadable and stored locally like any other
+attachment. Requires `OPENROUTER_API_KEY`.
+
+## Read aloud (voice output)
+
+Assistant messages have a speaker icon that reads the response aloud using
+the browser's built-in Web Speech API (`speechSynthesis`) — entirely
+client-side, no API key or network call involved. Voice **input** (talking
+to MAAR) isn't wired up yet; see `NEXT_STEPS.md`.
+
 ## Security
 
 - `NVIDIA_API_KEY` and `OPENROUTER_API_KEY` are each read only inside their

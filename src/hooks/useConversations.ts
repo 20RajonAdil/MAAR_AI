@@ -15,8 +15,15 @@ import {
 } from '@/lib/db/conversations';
 import type { ChatAttachment, ChatMessage, MaarErrorCode } from '@/lib/ai/types';
 import { streamChat } from '@/lib/ai/client';
+import { generateImageClient } from '@/lib/ai/image-client';
 import { friendlyErrorMessage } from '@/lib/ai/errors';
-import { getModel } from '@/lib/ai/models';
+import { getModel, IMAGE_MODEL_ID } from '@/lib/ai/models';
+
+// Errors that mean "this model is temporarily unable to serve requests"
+// (as opposed to a config problem like a missing key) are the ones worth
+// automatically retrying against a fallback model.
+const FALLBACK_TRIGGERS: MaarErrorCode[] = ['rate-limited', 'model-unavailable'];
+const MAX_FALLBACK_HOPS = 2;
 
 export function useConversations(defaultModelId: string) {
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
@@ -87,11 +94,10 @@ export function useConversations(defaultModelId: string) {
   const sendMessage = useCallback(
     async (content: string, modelId: string, attachments?: ChatAttachment[]) => {
       let conversationId = activeId;
-      let conv: ConversationRecord | null = null;
 
       if (!conversationId) {
         const title = content.trim().slice(0, 60) || 'New conversation';
-        conv = await createConversation(modelId, title);
+        const conv = await createConversation(modelId, title);
         conversationId = conv.id;
         setActiveId(conversationId);
       }
@@ -127,47 +133,153 @@ export function useConversations(defaultModelId: string) {
       abortRef.current = controller;
       setIsGenerating(true);
 
+      // Batching deltas into a single React update per animation frame
+      // keeps fast streams smooth instead of thrashing the markdown
+      // renderer on every few-character chunk.
       let accumulated = '';
-      let reasoningStatus: string | null = null;
+      let switchNote = '';
+      let flushScheduled = false;
+      let finalModelId = modelId;
 
-      const commit = async (patch: Partial<ChatMessage>) => {
+      const commit = (patch: Partial<ChatMessage>) => {
         setMessages((prev) => prev.map((m) => (m.id === assistantMessage.id ? { ...m, ...patch } : m)));
       };
 
-      await streamChat(
-        { model: modelId, messages: history },
-        {
-          onDelta: (text) => {
-            accumulated += text;
-            commit({ content: accumulated, isStreaming: true });
-          },
-          onReasoningStatus: (status) => {
-            reasoningStatus = status;
-            commit({ content: accumulated, isStreaming: true });
-          },
-          onError: (code: MaarErrorCode) => {
-            commit({ isStreaming: false, error: friendlyErrorMessage(code) });
-          },
-          onDone: async () => {
-            const finalMessage: ChatMessage = {
-              ...assistantMessage,
-              content: accumulated,
-              isStreaming: false,
-              stopped: controller.signal.aborted && !accumulated,
-            };
-            commit({ isStreaming: false, stopped: finalMessage.stopped });
-            if (conversationId) await saveMessage(conversationId, finalMessage);
-            setIsGenerating(false);
-            abortRef.current = null;
-            refreshList();
-          },
-        },
-        controller.signal,
-      );
+      const scheduleFlush = () => {
+        if (flushScheduled) return;
+        flushScheduled = true;
+        requestAnimationFrame(() => {
+          flushScheduled = false;
+          commit({ content: switchNote + accumulated, isStreaming: true });
+        });
+      };
 
-      void reasoningStatus; // status is surfaced live via commit(); kept for clarity
+      const runStream = (streamModelId: string, attemptedIds: string[]): Promise<void> =>
+        new Promise((resolve) => {
+          finalModelId = streamModelId;
+          streamChat(
+            { model: streamModelId, messages: history },
+            {
+              onDelta: (text) => {
+                accumulated += text;
+                scheduleFlush();
+              },
+              onReasoningStatus: () => {
+                // Surfaced as a live "Reasoning…" state by MessageBubble
+                // whenever content is still empty; no extra action needed.
+              },
+              onError: async (code: MaarErrorCode) => {
+                const failedModel = getModel(streamModelId);
+                const fallbackId = failedModel?.fallbackModelId;
+                const canFallback =
+                  FALLBACK_TRIGGERS.includes(code) &&
+                  fallbackId &&
+                  !attemptedIds.includes(fallbackId) &&
+                  attemptedIds.length < MAX_FALLBACK_HOPS;
+
+                if (canFallback) {
+                  const fallbackModel = getModel(fallbackId!);
+                  switchNote = `*Switched to **${fallbackModel?.label ?? fallbackId}** — ${
+                    failedModel?.label ?? streamModelId
+                  } hit its usage limit.*\n\n`;
+                  commit({ content: switchNote, isStreaming: true });
+                  await runStream(fallbackId!, [...attemptedIds, streamModelId]);
+                  resolve();
+                  return;
+                }
+
+                commit({ isStreaming: false, error: friendlyErrorMessage(code) });
+                resolve();
+              },
+              onDone: async () => {
+                resolve();
+              },
+            },
+            controller.signal,
+          );
+        });
+
+      await runStream(modelId, [modelId]);
+
+      const finalContent = switchNote + accumulated;
+      const finalMessage: ChatMessage = {
+        ...assistantMessage,
+        content: finalContent,
+        isStreaming: false,
+        stopped: controller.signal.aborted && !accumulated,
+        model: finalModelId,
+      };
+      commit({ content: finalContent, isStreaming: false, stopped: finalMessage.stopped, model: finalModelId });
+      if (conversationId && (finalContent || finalMessage.stopped)) {
+        await saveMessage(conversationId, finalMessage);
+      }
+      setIsGenerating(false);
+      abortRef.current = null;
+      refreshList();
     },
     [activeId, messages, refreshList],
+  );
+
+  const sendImageMessage = useCallback(
+    async (prompt: string) => {
+      let conversationId = activeId;
+
+      if (!conversationId) {
+        const conv = await createConversation(IMAGE_MODEL_ID, prompt.trim().slice(0, 60) || 'Generated image');
+        conversationId = conv.id;
+        setActiveId(conversationId);
+      }
+
+      const userMessage: ChatMessage = {
+        id: newMessageId(),
+        role: 'user',
+        content: prompt,
+        createdAt: Date.now(),
+      };
+      const assistantMessage: ChatMessage = {
+        id: newMessageId(),
+        role: 'assistant',
+        content: '',
+        createdAt: Date.now() + 1,
+        isStreaming: true,
+        model: IMAGE_MODEL_ID,
+      };
+
+      await saveMessage(conversationId, userMessage);
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      await refreshList();
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsGenerating(true);
+
+      const result = await generateImageClient(prompt, IMAGE_MODEL_ID, controller.signal);
+
+      let finalMessage: ChatMessage;
+      if (result.ok) {
+        finalMessage = {
+          ...assistantMessage,
+          content: '',
+          isStreaming: false,
+          attachments: result.images.map((dataUrl, i) => ({
+            id: crypto.randomUUID(),
+            name: `generated-image-${i + 1}.png`,
+            mimeType: 'image/png',
+            dataUrl,
+            kind: 'image' as const,
+          })),
+        };
+      } else {
+        finalMessage = { ...assistantMessage, isStreaming: false, error: result.message };
+      }
+
+      setMessages((prev) => prev.map((m) => (m.id === assistantMessage.id ? finalMessage : m)));
+      if (conversationId) await saveMessage(conversationId, finalMessage);
+      setIsGenerating(false);
+      abortRef.current = null;
+      refreshList();
+    },
+    [activeId, refreshList],
   );
 
   const editAndResend = useCallback(
@@ -208,6 +320,7 @@ export function useConversations(defaultModelId: string) {
     deleteConversationById,
     archiveConversation,
     sendMessage,
+    sendImageMessage,
     editAndResend,
     regenerate,
     stopGenerating,
