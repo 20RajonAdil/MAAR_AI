@@ -122,3 +122,32 @@ doesn't work.
 5. If deploying somewhere other than Vercel/a Node host, confirm your
    platform supports the Edge/Node streaming response used in
    `src/app/api/chat/route.ts`
+
+## Skills: GitHub import + mobile pass (latest round)
+
+- **GitHub-link skill import is real and tested.** Direct file/raw links
+  are unlimited (CDN-backed, no API call). Bare-repo and folder links use
+  GitHub's contents API, which is capped at 60 unauthenticated
+  requests/hour — I burned through that quota myself while testing this
+  in the sandbox, which is exactly why I added optional `GITHUB_TOKEN`
+  support rather than assuming it wouldn't matter. Without a token, that
+  60/hour limit is shared across everyone hitting your deployment, not
+  per-visitor — worth knowing before you rely on it for anything but
+  occasional use.
+- **Skills now accept a broader set of text extensions** (.py, .js, .sh,
+  .json, .yaml, etc.), not just .md/.txt — still text-only, still never
+  executed, per the scope decision from the previous round.
+- **Not done: uploading a `.zip` bundle** (multiple files, like a real
+  Claude Skill folder with SKILL.md + references + scripts). The current
+  feature is one file (or one imported file) = one skill. Zip support is
+  a contained addition (a client-side unzip library, extracting only text
+  members, skipping binaries) if you want it next.
+- **Mobile**: the sidebar is now a proper off-canvas drawer on screens
+  under `md` (768px), with a mobile top bar (menu button + current
+  conversation/model name) replacing the old always-visible column. Also
+  fixed: iOS Safari's zoom-on-input-focus (inputs now force 16px on small
+  screens), the model picker dropdown and long model names no longer
+  overflow narrow viewports, and a global `overflow-x: hidden` safety net.
+  I could not test this on a real device from this sandbox — please check
+  it on an actual phone, especially the drawer's swipe-adjacent feel and
+  the composer's behavior with the on-screen keyboard open.

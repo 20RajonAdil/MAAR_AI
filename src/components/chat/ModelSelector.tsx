@@ -80,7 +80,7 @@ export function ModelSelector({ value, onChange }: Props) {
           aria-label="Select AI model"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-          <span className="font-medium">{active?.label ?? 'Select model'}</span>
+          <span className="max-w-[8.5rem] truncate font-medium sm:max-w-none">{active?.label ?? 'Select model'}</span>
           <ChevronDown size={14} className="text-ink-faint" />
         </button>
       </RadixDropdown.Trigger>
@@ -88,7 +88,7 @@ export function ModelSelector({ value, onChange }: Props) {
         <RadixDropdown.Content
           align="start"
           sideOffset={8}
-          className="z-50 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-border bg-base-raised p-1.5 shadow-panel"
+          className="z-50 max-h-[70vh] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-base-raised p-1.5 shadow-panel"
         >
           {groups.map(({ key, models: groupModels }) => (
             <div key={key}>

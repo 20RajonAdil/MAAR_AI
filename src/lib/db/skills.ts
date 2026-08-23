@@ -1,17 +1,38 @@
 import { getDb, type SkillRecord } from './index';
 
 /**
- * "Skills" are plain-text instruction files the person uploads (e.g. a
- * house style guide, a coding checklist, domain expertise notes). MAAR
- * never executes anything from an uploaded file — a skill's content is
- * only ever sent to the model as a system message, exactly like typing
- * custom instructions yourself. This is a deliberate scope boundary:
- * running arbitrary code from an uploaded file would be a serious
- * security risk, so that is not what this feature does.
+ * "Skills" are text files the person uploads or imports (instructions, a
+ * style guide, domain notes, a reference script for the model to *read*).
+ * MAAR never executes anything from a skill file — its content is only
+ * ever sent to the model as a system message, exactly like typing custom
+ * instructions yourself. This is a deliberate scope boundary: running
+ * arbitrary code from an uploaded file would be a serious security risk,
+ * so that is not what this feature does, even for file types like .py or
+ * .sh that MAAR accepts as readable text.
  */
 
 export const MAX_SKILL_FILE_BYTES = 200_000; // ~200KB of text is already a lot of context
-export const ALLOWED_SKILL_EXTENSIONS = ['.md', '.markdown', '.txt'];
+export const ALLOWED_SKILL_EXTENSIONS = [
+  '.md',
+  '.markdown',
+  '.txt',
+  '.json',
+  '.yaml',
+  '.yml',
+  '.csv',
+  '.py',
+  '.js',
+  '.ts',
+  '.tsx',
+  '.jsx',
+  '.sh',
+  '.html',
+  '.css',
+  '.sql',
+  '.rb',
+  '.go',
+  '.rs',
+];
 
 export interface SkillValidationError {
   code: 'unsupported-type' | 'too-large' | 'empty';
@@ -21,12 +42,11 @@ export interface SkillValidationError {
 export function validateSkillFile(file: File): SkillValidationError | null {
   const lowerName = file.name.toLowerCase();
   const hasAllowedExtension = ALLOWED_SKILL_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
-  const isTextMime = file.type === '' || file.type.startsWith('text/');
 
-  if (!hasAllowedExtension || !isTextMime) {
+  if (!hasAllowedExtension) {
     return {
       code: 'unsupported-type',
-      message: 'Skills must be plain text — a .md or .txt file with instructions, not code or a binary file.',
+      message: `MAAR reads skills as text, not executables — try one of: ${ALLOWED_SKILL_EXTENSIONS.join(', ')}.`,
     };
   }
   if (file.size > MAX_SKILL_FILE_BYTES) {
@@ -46,6 +66,9 @@ export async function addSkillFromFile(file: File): Promise<SkillRecord> {
 
   const content = await file.text();
   if (!content.trim()) throw new Error("That file is empty — there's nothing to teach MAAR.");
+  if (content.includes('\u0000')) {
+    throw new Error("That file doesn't look like text — MAAR only accepts plain-text skill files.");
+  }
 
   const record: SkillRecord = {
     id: crypto.randomUUID(),
@@ -53,6 +76,30 @@ export async function addSkillFromFile(file: File): Promise<SkillRecord> {
     content,
     sizeBytes: file.size,
     sourceFileName: file.name,
+    enabled: true,
+    createdAt: Date.now(),
+  };
+  await getDb().skills.add(record);
+  return record;
+}
+
+export async function addSkillFromRemote(name: string, content: string, sourceUrl: string): Promise<SkillRecord> {
+  if (!content.trim()) throw new Error("That file is empty — there's nothing to teach MAAR.");
+  if (content.length > MAX_SKILL_FILE_BYTES) {
+    throw new Error(
+      `That file is too large (${Math.round(content.length / 1024)}KB). Skills are capped at ${Math.round(
+        MAX_SKILL_FILE_BYTES / 1024,
+      )}KB.`,
+    );
+  }
+
+  const record: SkillRecord = {
+    id: crypto.randomUUID(),
+    name: name.replace(/\.(md|markdown|txt)$/i, ''),
+    content,
+    sizeBytes: content.length,
+    sourceFileName: name,
+    sourceUrl,
     enabled: true,
     createdAt: Date.now(),
   };

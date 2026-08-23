@@ -138,6 +138,18 @@ execute anything from the uploaded file. Running arbitrary code from a
 user-uploaded file would be a real security risk, so that's out of scope
 by design, not an oversight.
 
+**Add from GitHub**: paste a repo link (looks for `SKILL.md` at the root),
+a folder link, or a direct/raw file link. Tested against live GitHub URLs
+before shipping — see `scripts/test-github-skill-import.mjs`. Only
+`github.com`, `raw.githubusercontent.com`, `gist.githubusercontent.com`,
+and `gist.github.com` are ever fetched (an explicit allowlist, not a
+general URL fetcher — anything else is rejected server-side to avoid
+turning this into an SSRF vector). Direct file/raw links don't use
+GitHub's API at all and have no rate limit; repo/folder links do, and
+share GitHub's unauthenticated 60-requests/hour limit across everyone
+using this deployment. Set the optional `GITHUB_TOKEN` env var to raise
+that to 5,000/hour.
+
 ## Security
 
 - `NVIDIA_API_KEY` and `OPENROUTER_API_KEY` are each read only inside their

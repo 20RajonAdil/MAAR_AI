@@ -123,7 +123,7 @@ export function Composer({
           dragOver ? 'border-gold' : imageMode ? 'border-ice/50' : 'border-border',
         )}
       >
-        <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-y-1.5 border-b border-border/70 px-3 py-2">
           {imageMode ? (
             <span className="flex items-center gap-2 text-sm font-medium text-ice">
               <ImagePlus size={15} />

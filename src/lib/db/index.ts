@@ -27,6 +27,8 @@ export interface SkillRecord {
   content: string;
   sizeBytes: number;
   sourceFileName: string;
+  /** Set when the skill was imported from a URL rather than uploaded directly. */
+  sourceUrl?: string;
   enabled: boolean;
   createdAt: number;
 }
