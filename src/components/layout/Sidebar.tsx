@@ -259,6 +259,8 @@ export function Sidebar({
         <p className="mt-2 px-2.5 text-[10px] leading-relaxed text-ink-faint">
           Created by Md Adil Rajon
           <br />© {new Date().getFullYear()} MAAR AI
+          <br />Accessibility: aims to meet WCAG 2.1 AA. Issues?{' '}
+          <a href="mailto:rajonadil@gmail.com" className="underline hover:text-ink">Contact us</a>
         </p>
       </div>
     </div>
