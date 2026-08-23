@@ -137,11 +137,12 @@ doesn't work.
 - **Skills now accept a broader set of text extensions** (.py, .js, .sh,
   .json, .yaml, etc.), not just .md/.txt — still text-only, still never
   executed, per the scope decision from the previous round.
-- **Not done: uploading a `.zip` bundle** (multiple files, like a real
-  Claude Skill folder with SKILL.md + references + scripts). The current
-  feature is one file (or one imported file) = one skill. Zip support is
-  a contained addition (a client-side unzip library, extracting only text
-  members, skipping binaries) if you want it next.
+- ~~Not done: uploading a `.zip` bundle~~ — **done as of this round.**
+  `addSkillFromZip` in `src/lib/db/skills.ts` extracts every readable text
+  file from a `.zip`, skips binaries, strips a common wrapping folder, and
+  prioritizes `SKILL.md`. Verified with a self-contained, re-runnable test
+  (`scripts/test-zip-skill-extract.mjs`) that builds a test zip in memory
+  and checks all of that behavior — all 6 checks pass.
 - **Mobile**: the sidebar is now a proper off-canvas drawer on screens
   under `md` (768px), with a mobile top bar (menu button + current
   conversation/model name) replacing the old always-visible column. Also

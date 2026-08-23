@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import { getDb, type SkillRecord } from './index';
 
 /**
@@ -8,10 +9,13 @@ import { getDb, type SkillRecord } from './index';
  * instructions yourself. This is a deliberate scope boundary: running
  * arbitrary code from an uploaded file would be a serious security risk,
  * so that is not what this feature does, even for file types like .py or
- * .sh that MAAR accepts as readable text.
+ * .sh that MAAR accepts as readable text, and even for a .zip bundle that
+ * looks like a real multi-file skill folder.
  */
 
 export const MAX_SKILL_FILE_BYTES = 200_000; // ~200KB of text is already a lot of context
+export const MAX_SKILL_BUNDLE_BYTES = 400_000; // a .zip can hold several files, so a slightly higher combined cap
+export const MAX_ZIP_UPLOAD_BYTES = 5_000_000; // the .zip itself, before extraction — mostly compresses down
 export const ALLOWED_SKILL_EXTENSIONS = [
   '.md',
   '.markdown',
@@ -100,6 +104,95 @@ export async function addSkillFromRemote(name: string, content: string, sourceUr
     sizeBytes: content.length,
     sourceFileName: name,
     sourceUrl,
+    enabled: true,
+    createdAt: Date.now(),
+  };
+  await getDb().skills.add(record);
+  return record;
+}
+
+const BINARY_LOOKING_NAME = /\.(png|jpe?g|gif|webp|svg|ico|bmp|pdf|zip|tar|gz|7z|rar|exe|dll|so|dylib|bin|mp3|mp4|wav|mov|avi|woff2?|ttf|otf|eot|pyc|class)$/i;
+
+/**
+ * Extracts a .zip into one combined skill, like uploading a real
+ * multi-file skill folder (SKILL.md plus reference files). Only files
+ * with an allowed text extension are read; everything else — images,
+ * binaries, compiled artifacts, nested archives — is silently skipped,
+ * never stored, never executed. A SKILL.md anywhere in the archive is
+ * placed first in the combined content.
+ */
+export async function addSkillFromZip(file: File): Promise<SkillRecord> {
+  if (file.size > MAX_ZIP_UPLOAD_BYTES) {
+    throw new Error(
+      `That zip is too large (${Math.round(file.size / 1024)}KB). Zipped skill bundles are capped at ${Math.round(
+        MAX_ZIP_UPLOAD_BYTES / 1024,
+      )}KB.`,
+    );
+  }
+
+  const zip = await JSZip.loadAsync(file).catch(() => {
+    throw new Error("That doesn't look like a valid .zip file.");
+  });
+
+  const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+
+  // GitHub's "Download ZIP" wraps everything in a single "repo-branch/"
+  // folder — strip that one common prefix so displayed paths read cleanly.
+  const topLevelDirs = new Set(entries.map((e) => e.name.split('/')[0]));
+  const commonPrefix = topLevelDirs.size === 1 && entries.every((e) => e.name.includes('/')) ? `${[...topLevelDirs][0]}/` : '';
+
+  type Piece = { path: string; content: string };
+  const pieces: Piece[] = [];
+  let totalBytes = 0;
+
+  for (const entry of entries) {
+    const lowerName = entry.name.toLowerCase();
+    if (BINARY_LOOKING_NAME.test(lowerName)) continue;
+    const hasAllowedExtension = ALLOWED_SKILL_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+    if (!hasAllowedExtension) continue;
+
+    const text = await entry.async('string');
+    if (!text.trim() || text.includes('\u0000')) continue; // empty or binary-looking despite the extension
+    if (text.length > MAX_SKILL_FILE_BYTES) continue; // one oversized file shouldn't crowd out the rest of the bundle
+
+    const displayPath = entry.name.startsWith(commonPrefix) ? entry.name.slice(commonPrefix.length) : entry.name;
+    pieces.push({ path: displayPath, content: text });
+    totalBytes += text.length;
+  }
+
+  if (pieces.length === 0) {
+    throw new Error("Couldn't find any readable text files in that zip — check it isn't just images or binaries.");
+  }
+
+  // SKILL.md (however deep) leads the combined content, like a real skill's entry point.
+  pieces.sort((a, b) => {
+    const aIsSkill = /(^|\/)skill\.md$/i.test(a.path) ? 0 : 1;
+    const bIsSkill = /(^|\/)skill\.md$/i.test(b.path) ? 0 : 1;
+    return aIsSkill - bIsSkill;
+  });
+
+  let combined = '';
+  let truncated = false;
+  for (const piece of pieces) {
+    const block = `# File: ${piece.path}\n\n${piece.content}\n\n---\n\n`;
+    if (combined.length + block.length > MAX_SKILL_BUNDLE_BYTES) {
+      truncated = true;
+      break;
+    }
+    combined += block;
+  }
+
+  const bundleName = file.name.replace(/\.zip$/i, '');
+  const record: SkillRecord = {
+    id: crypto.randomUUID(),
+    name: bundleName,
+    content: truncated
+      ? `${combined}\n_(Some files from this bundle were omitted — it was larger than MAAR's ${Math.round(
+          MAX_SKILL_BUNDLE_BYTES / 1024,
+        )}KB combined limit.)_`
+      : combined,
+    sizeBytes: totalBytes,
+    sourceFileName: file.name,
     enabled: true,
     createdAt: Date.now(),
   };

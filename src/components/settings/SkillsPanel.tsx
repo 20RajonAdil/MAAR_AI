@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, FileText, Github, Link2, Sparkles, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, FileArchive, FileText, Github, Link2, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Switch } from '@/components/ui/Switch';
 import {
   addSkillFromFile,
   addSkillFromRemote,
+  addSkillFromZip,
   deleteSkill,
   listSkills,
   setSkillEnabled,
   ALLOWED_SKILL_EXTENSIONS,
   MAX_SKILL_FILE_BYTES,
+  MAX_ZIP_UPLOAD_BYTES,
 } from '@/lib/db/skills';
 import { importSkillFromUrl } from '@/lib/skills/import-client';
 import type { SkillRecord } from '@/lib/db';
@@ -36,7 +38,11 @@ export function SkillsPanel() {
     setError(null);
     setBusy(true);
     try {
-      await addSkillFromFile(file);
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        await addSkillFromZip(file);
+      } else {
+        await addSkillFromFile(file);
+      }
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add that skill.');
@@ -74,10 +80,11 @@ export function SkillsPanel() {
         <Sparkles size={18} className="mt-0.5 shrink-0 text-gold" />
         <div className="text-xs leading-relaxed text-ink-muted">
           <p className="mb-1.5 text-sm text-ink">What a skill does</p>
-          Add a text file — instructions, a style guide, domain knowledge, a reference script — from
-          your device or a GitHub link. Enabled skills are sent to the model as extra instructions on
-          every message. MAAR reads the text; it never executes anything from a skill file. Skills
-          stay local, like everything else in MAAR.
+          Add a text file, a .zip of a whole skill folder, or a GitHub link — instructions, a style
+          guide, domain knowledge, reference files. Enabled skills are sent to the model as extra
+          instructions on every message. MAAR reads the text; it never executes anything from a skill
+          file, even code files or scripts inside a zip. Skills stay local, like everything else in
+          MAAR.
         </div>
       </div>
 
@@ -109,7 +116,7 @@ export function SkillsPanel() {
           <input
             ref={fileInputRef}
             type="file"
-            accept={ALLOWED_SKILL_EXTENSIONS.join(',')}
+            accept={[...ALLOWED_SKILL_EXTENSIONS, '.zip'].join(',')}
             className="hidden"
             onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
           />
@@ -120,11 +127,15 @@ export function SkillsPanel() {
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-4 py-4 text-sm text-ink-muted transition-colors hover:border-gold/50 hover:text-ink disabled:opacity-50"
           >
             <Upload size={15} />
-            {busy ? 'Adding skill…' : 'Choose a file'}
+            {busy ? 'Adding skill…' : 'Choose a file or .zip folder'}
           </button>
           <p className="mt-1.5 text-[11px] text-ink-faint">
-            Text files only ({ALLOWED_SKILL_EXTENSIONS.slice(0, 6).join(', ')}, and more) — capped at{' '}
-            {Math.round(MAX_SKILL_FILE_BYTES / 1024)}KB.
+            Single text files ({ALLOWED_SKILL_EXTENSIONS.slice(0, 5).join(', ')}, and more, capped at{' '}
+            {Math.round(MAX_SKILL_FILE_BYTES / 1024)}KB), or a{' '}
+            <strong className="font-medium text-ink-muted">.zip</strong> of a whole skill folder — like a real
+            Claude Skill with a SKILL.md plus reference files (zip capped at{' '}
+            {Math.round(MAX_ZIP_UPLOAD_BYTES / 1024 / 1024)}MB; only text files inside are read, everything
+            else is skipped).
           </p>
         </div>
       ) : (
@@ -174,6 +185,8 @@ export function SkillsPanel() {
               >
                 {skill.sourceUrl ? (
                   <Github size={16} className="mt-0.5 shrink-0 text-ink-faint" />
+                ) : skill.sourceFileName.toLowerCase().endsWith('.zip') ? (
+                  <FileArchive size={16} className="mt-0.5 shrink-0 text-ink-faint" />
                 ) : (
                   <FileText size={16} className="mt-0.5 shrink-0 text-ink-faint" />
                 )}

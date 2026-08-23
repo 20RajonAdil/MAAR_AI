@@ -150,6 +150,15 @@ share GitHub's unauthenticated 60-requests/hour limit across everyone
 using this deployment. Set the optional `GITHUB_TOKEN` env var to raise
 that to 5,000/hour.
 
+**Add from a .zip**: upload a `.zip` of a whole skill folder — like a
+real Claude Skill with a `SKILL.md` plus reference files — and MAAR
+extracts every readable text file inside (capped at 400KB combined),
+skips anything binary, strips a common top-level folder (the way
+GitHub's "Download ZIP" wraps everything in one), and puts `SKILL.md`
+first in the combined content. See `src/lib/db/skills.ts`
+(`addSkillFromZip`) and the runnable proof in
+`scripts/test-zip-skill-extract.mjs`.
+
 ## Security
 
 - `NVIDIA_API_KEY` and `OPENROUTER_API_KEY` are each read only inside their
