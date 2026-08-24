@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return new Response('Invalid request body', { status: 400 });
   }
 
-  const { model, messages } = payload ?? {};
+  const { model, messages, webSearch } = payload ?? {};
 
   if (!model || !getModel(model)) {
     const stream = new ReadableStream<Uint8Array>({
@@ -37,7 +37,12 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const chunk of streamCompletion({ model, messages, signal: abortController.signal })) {
+        for await (const chunk of streamCompletion({
+          model,
+          messages,
+          webSearch: Boolean(webSearch),
+          signal: abortController.signal,
+        })) {
           controller.enqueue(encodeSSE(chunk));
         }
       } catch {

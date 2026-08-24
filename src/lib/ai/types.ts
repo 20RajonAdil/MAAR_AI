@@ -61,6 +61,11 @@ export interface ChatAttachment {
   extractedTextTruncated?: boolean;
 }
 
+export interface Citation {
+  url: string;
+  title?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
@@ -74,12 +79,15 @@ export interface ChatMessage {
   /** Set if generation failed. Holds a friendly, already-sanitized message. */
   error?: string;
   model?: string;
+  /** Sources returned by OpenRouter's web_search tool, when web search was enabled for this message. */
+  citations?: Citation[];
 }
 
 export interface StreamChunk {
-  type: 'delta' | 'reasoning-status' | 'done' | 'error';
+  type: 'delta' | 'reasoning-status' | 'citations' | 'done' | 'error';
   delta?: string;
   reasoningStatus?: string;
+  citations?: Citation[];
   errorMessage?: string;
   errorCode?: MaarErrorCode;
 }
@@ -101,5 +109,7 @@ export interface CompletionRequest {
   messages: Pick<ChatMessage, 'role' | 'content' | 'attachments'>[];
   temperature?: number;
   maxTokens?: number;
+  /** OpenRouter only: runs the model with server-side web search (openrouter:web_search tool). Ignored by other providers. */
+  webSearch?: boolean;
   signal?: AbortSignal;
 }

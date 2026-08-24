@@ -13,7 +13,7 @@ import {
   saveMessage,
   setArchived as dbSetArchived,
 } from '@/lib/db/conversations';
-import type { ChatAttachment, ChatMessage, MaarErrorCode } from '@/lib/ai/types';
+import type { ChatAttachment, ChatMessage, Citation, MaarErrorCode } from '@/lib/ai/types';
 import { streamChat } from '@/lib/ai/client';
 import { generateImageClient } from '@/lib/ai/image-client';
 import { friendlyErrorMessage } from '@/lib/ai/errors';
@@ -95,7 +95,7 @@ export function useConversations(defaultModelId: string) {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string, modelId: string, attachments?: ChatAttachment[]) => {
+    async (content: string, modelId: string, attachments?: ChatAttachment[], webSearch = false) => {
       let conversationId = activeId;
 
       if (!conversationId) {
@@ -147,6 +147,7 @@ export function useConversations(defaultModelId: string) {
       let switchNote = '';
       let flushScheduled = false;
       let finalModelId = modelId;
+      let citations: Citation[] = [];
 
       const commit = (patch: Partial<ChatMessage>) => {
         setMessages((prev) => prev.map((m) => (m.id === assistantMessage.id ? { ...m, ...patch } : m)));
@@ -165,7 +166,7 @@ export function useConversations(defaultModelId: string) {
         new Promise((resolve) => {
           finalModelId = streamModelId;
           streamChat(
-            { model: streamModelId, messages: messagesForRequest },
+            { model: streamModelId, messages: messagesForRequest, webSearch },
             {
               onDelta: (text) => {
                 accumulated += text;
@@ -174,6 +175,10 @@ export function useConversations(defaultModelId: string) {
               onReasoningStatus: () => {
                 // Surfaced as a live "Reasoning…" state by MessageBubble
                 // whenever content is still empty; no extra action needed.
+              },
+              onCitations: (c) => {
+                citations = c;
+                commit({ citations });
               },
               onError: async (code: MaarErrorCode) => {
                 const failedModel = getModel(streamModelId);
@@ -215,8 +220,15 @@ export function useConversations(defaultModelId: string) {
         isStreaming: false,
         stopped: controller.signal.aborted && !accumulated,
         model: finalModelId,
+        citations: citations.length > 0 ? citations : undefined,
       };
-      commit({ content: finalContent, isStreaming: false, stopped: finalMessage.stopped, model: finalModelId });
+      commit({
+        content: finalContent,
+        isStreaming: false,
+        stopped: finalMessage.stopped,
+        model: finalModelId,
+        citations: finalMessage.citations,
+      });
       if (conversationId && (finalContent || finalMessage.stopped)) {
         await saveMessage(conversationId, finalMessage);
       }

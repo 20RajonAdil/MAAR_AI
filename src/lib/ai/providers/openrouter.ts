@@ -29,5 +29,22 @@ export async function* streamOpenRouterCompletion(
       'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://maar-ai.vercel.app',
       'X-Title': 'MAAR AI',
     },
+    // Server-side web search: OpenRouter itself runs the search and feeds
+    // results to the model — no separate search API or client-side logic
+    // needed on our end. Only added when the person explicitly enables it
+    // (the composer's "Web search" toggle), since it costs extra even on
+    // free models. Requires a model that supports tool calling; if the
+    // selected model doesn't, OpenRouter returns an error, which surfaces
+    // through the normal friendly-error path.
+    extraBody: req.webSearch
+      ? {
+          tools: [
+            {
+              type: 'openrouter:web_search',
+              parameters: { engine: 'exa', max_results: 5 },
+            },
+          ],
+        }
+      : undefined,
   });
 }

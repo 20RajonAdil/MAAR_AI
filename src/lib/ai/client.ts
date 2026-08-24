@@ -1,10 +1,11 @@
 'use client';
 
-import type { ChatMessage, MaarErrorCode, StreamChunk } from './types';
+import type { ChatMessage, Citation, MaarErrorCode, StreamChunk } from './types';
 
 export interface StreamCallbacks {
   onDelta: (text: string) => void;
   onReasoningStatus: (status: string) => void;
+  onCitations: (citations: Citation[]) => void;
   onError: (code: MaarErrorCode) => void;
   onDone: () => void;
 }
@@ -15,7 +16,7 @@ export interface StreamCallbacks {
  * real API key server-side.
  */
 export async function streamChat(
-  params: { model: string; messages: Pick<ChatMessage, 'role' | 'content' | 'attachments'>[] },
+  params: { model: string; messages: Pick<ChatMessage, 'role' | 'content' | 'attachments'>[]; webSearch?: boolean },
   callbacks: StreamCallbacks,
   signal: AbortSignal,
 ): Promise<void> {
@@ -57,6 +58,7 @@ export async function streamChat(
         if (chunk.type === 'delta' && chunk.delta) callbacks.onDelta(chunk.delta);
         else if (chunk.type === 'reasoning-status' && chunk.reasoningStatus)
           callbacks.onReasoningStatus(chunk.reasoningStatus);
+        else if (chunk.type === 'citations' && chunk.citations) callbacks.onCitations(chunk.citations);
         else if (chunk.type === 'error') callbacks.onError(chunk.errorCode ?? 'unknown');
         else if (chunk.type === 'done') {
           callbacks.onDone();

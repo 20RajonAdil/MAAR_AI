@@ -140,6 +140,31 @@ export function MessageBubble({ message, onEdit, onRegenerate }: Props) {
           )}
 
           {message.stopped && <p className="mt-1 text-xs italic text-ink-faint">Generation stopped</p>}
+
+          {message.citations && message.citations.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-2.5">
+              {message.citations.map((c, i) => {
+                let hostname = c.url;
+                try {
+                  hostname = new URL(c.url).hostname.replace(/^www\./, '');
+                } catch {
+                  // keep raw url as fallback label
+                }
+                return (
+                  <a
+                    key={c.url}
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={c.title ?? c.url}
+                    className="flex items-center gap-1 rounded-full border border-border bg-base-raised2/60 px-2 py-0.5 text-[11px] text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                  >
+                    <span className="text-ink-faint">[{i + 1}]</span> {hostname}
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {!message.isStreaming && !message.error && (message.content || message.attachments?.length) && (

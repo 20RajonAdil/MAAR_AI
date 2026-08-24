@@ -54,9 +54,9 @@ export function AppShell() {
     return <div className="flex h-dvh items-center justify-center bg-base text-ink-faint text-sm">Loading MAAR AI…</div>;
   }
 
-  const handleSend = (content: string, attachments: ChatAttachment[]) => {
+  const handleSend = (content: string, attachments: ChatAttachment[], webSearch = false) => {
     if (!content && attachments.length === 0) return;
-    sendMessage(content, modelId, attachments);
+    sendMessage(content, modelId, attachments, webSearch);
   };
 
   const activeConversationTitle = conversations.find((c) => c.id === activeId)?.title;

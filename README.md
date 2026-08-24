@@ -146,6 +146,23 @@ reach MAAR's cookies, storage, or same-origin routes. Python runs via
 Pyodide (WASM CPython), loaded from its CDN on first use. See
 `src/lib/sandbox/run-js.ts` and `src/lib/sandbox/run-python.ts`.
 
+## Web search
+
+Toggle "Search" in the composer (visible for OpenRouter models only) to
+let MAAR look things up before answering, using OpenRouter's server-side
+`openrouter:web_search` tool — the search itself runs on OpenRouter's
+end, not MAAR's. Sources render as clickable chips under the answer.
+Costs extra OpenRouter credits per search, disclosed in the toggle's
+tooltip. See `src/lib/ai/providers/openrouter.ts`.
+
+## Voice input
+
+The mic button next to the composer transcribes speech using the
+browser's built-in `SpeechRecognition` — no API key, no network call,
+same approach as the existing read-aloud (`speechSynthesis`) feature.
+Hides itself on browsers without support (Firefox, mainly). See
+`src/lib/voice/use-voice-input.ts`.
+
 ## Skills (upload custom instructions)
 
 Settings → Skills lets you upload a plain-text `.md` or `.txt` file with

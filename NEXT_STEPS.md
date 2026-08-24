@@ -202,3 +202,36 @@ model itself.
 
 Also not done: code execution for TypeScript (would need in-browser
 transpilation) and for any language beyond JS/Python/HTML.
+
+## Web search + voice input (this round's "final touch")
+
+- **Real-time web search, via OpenRouter's server-side tool.** When "Search"
+  is toggled on (only shown for OpenRouter models — NVIDIA has no
+  equivalent), the request includes `tools: [{ type: 'openrouter:web_search' }]`.
+  OpenRouter executes the search itself and feeds results to the model —
+  no separate search API, no client-side search logic on MAAR's end. This
+  is confirmed current behavior per OpenRouter's own docs (checked before
+  building, not assumed). Sources render as clickable chips below the
+  answer, parsed from the response's `annotations` field.
+  **Costs extra OpenRouter credits per search, even on free models** — the
+  toggle's tooltip says so; nothing runs it silently.
+- **Voice input**, completing the voice feature (read-aloud shipped
+  earlier). Mic button uses the browser's built-in `SpeechRecognition` —
+  same zero-dependency, zero-API-key approach as read-aloud. Support
+  varies: solid in Chrome/Edge, partial in Safari, absent in Firefox — the
+  button hides itself entirely when unsupported rather than showing
+  something broken.
+
+### Honestly, what's unverified
+
+I could not test either of these against a live browser + live API key
+from this sandbox. Specifically uncertain and worth checking once
+deployed:
+- Whether the `annotations` field actually arrives on streaming delta
+  chunks the way I've coded for, or only on a final non-streaming message
+  — I wrote defensive parsing that checks both places, but the real
+  shape needs a live test with `Search` toggled on.
+- Whether every OpenRouter model in the registry actually supports tool
+  calling for `openrouter:web_search` — if a model doesn't, OpenRouter
+  should return an error that surfaces through the existing friendly-error
+  path, but that's untested.

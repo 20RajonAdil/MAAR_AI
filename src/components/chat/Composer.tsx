@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
-import { AlertTriangle, ArrowUp, ImagePlus, Paperclip, Sparkles, Square, X } from 'lucide-react';
+import { AlertTriangle, ArrowUp, Globe, ImagePlus, Mic, MicOff, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import { ModelSelector } from './ModelSelector';
 import { AttachmentPreview } from './AttachmentPreview';
 import { getModel, modelSupports } from '@/lib/ai/models';
 import type { ChatAttachment } from '@/lib/ai/types';
 import { cn, formatContextWindow } from '@/lib/utils/cn';
 import { DOCUMENT_EXTENSIONS, extractTextFromDocument } from '@/lib/attachments/extract-text';
+import { useVoiceInput } from '@/lib/voice/use-voice-input';
 
 interface Props {
   modelId: string;
@@ -15,7 +16,7 @@ interface Props {
   isGenerating: boolean;
   sendOnEnter: boolean;
   activeSkillCount: number;
-  onSend: (content: string, attachments: ChatAttachment[]) => void;
+  onSend: (content: string, attachments: ChatAttachment[], webSearch: boolean) => void;
   onGenerateImage: (prompt: string) => void;
   onStop: () => void;
   onOpenSkills: () => void;
@@ -50,6 +51,7 @@ export function Composer({
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
   const [processingCount, setProcessingCount] = useState(0);
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -57,6 +59,7 @@ export function Composer({
 
   const model = getModel(modelId);
   const acceptsImages = modelSupports(modelId, 'image-input');
+  const supportsWebSearch = model?.provider === 'openrouter';
 
   const resize = useCallback(() => {
     const el = textareaRef.current;
@@ -64,6 +67,12 @@ export function Composer({
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, []);
+
+  const { isSupported: voiceSupported, listening, interimText, start: startListening, stop: stopListening } =
+    useVoiceInput((finalChunk) => {
+      setText((prev) => (prev ? `${prev} ${finalChunk}` : finalChunk));
+      requestAnimationFrame(resize);
+    });
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -111,18 +120,32 @@ export function Composer({
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
     if (isGenerating || processingCount > 0) return;
+    if (listening) stopListening();
 
     if (imageMode) {
       if (!trimmed) return;
       onGenerateImage(trimmed);
     } else {
-      onSend(trimmed, attachments);
+      onSend(trimmed, attachments, webSearch && supportsWebSearch);
     }
 
     setText('');
     setAttachments([]);
     requestAnimationFrame(resize);
-  }, [text, attachments, isGenerating, processingCount, imageMode, onSend, onGenerateImage, resize]);
+  }, [
+    text,
+    attachments,
+    isGenerating,
+    processingCount,
+    imageMode,
+    webSearch,
+    supportsWebSearch,
+    listening,
+    stopListening,
+    onSend,
+    onGenerateImage,
+    resize,
+  ]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && sendOnEnter) {
@@ -183,6 +206,26 @@ export function Composer({
               {activeSkillCount}
             </button>
           )}
+          {!imageMode && supportsWebSearch && (
+            <button
+              type="button"
+              onClick={() => setWebSearch((v) => !v)}
+              title={
+                webSearch
+                  ? 'Web search is on — MAAR can look things up before answering (uses extra OpenRouter credits)'
+                  : 'Let MAAR search the web before answering (uses extra OpenRouter credits)'
+              }
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                webSearch
+                  ? 'border-ice/50 bg-ice/10 text-ice hover:bg-ice/15'
+                  : 'border-border text-ink-muted hover:border-border-strong hover:text-ink',
+              )}
+            >
+              <Globe size={12} />
+              Search
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setImageMode((v) => !v)}
@@ -224,6 +267,11 @@ export function Composer({
             <AlertTriangle size={12} /> {attachError}
           </p>
         )}
+        {listening && (
+          <p className="flex items-center gap-1.5 px-3 pt-2 text-xs text-gold">
+            <Mic size={12} className="animate-pulse" /> Listening… {interimText}
+          </p>
+        )}
 
         <div className="flex items-end gap-2 px-3 py-3">
           {!imageMode && (
@@ -261,6 +309,21 @@ export function Composer({
             aria-label={imageMode ? 'Describe the image to generate' : 'Message MAAR'}
             className="max-h-60 flex-1 resize-none bg-transparent py-1.5 text-[15px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none"
           />
+
+          {!imageMode && voiceSupported && (
+            <button
+              type="button"
+              onClick={() => (listening ? stopListening() : startListening())}
+              title={listening ? 'Stop voice input' : 'Speak instead of typing'}
+              className={cn(
+                'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+                listening ? 'bg-danger/15 text-danger' : 'text-ink-muted hover:bg-base-raised2 hover:text-ink',
+              )}
+              aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+            >
+              {listening ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+          )}
 
           {isGenerating ? (
             <button
