@@ -19,6 +19,8 @@ import { generateImageClient } from '@/lib/ai/image-client';
 import { friendlyErrorMessage } from '@/lib/ai/errors';
 import { getModel, IMAGE_MODEL_ID } from '@/lib/ai/models';
 import { buildActiveSkillsSystemPrompt } from '@/lib/db/skills';
+import { MAAR_SYSTEM_PROMPT } from '@/lib/ai/system-prompt';
+import { appendDocumentBlocks } from '@/lib/ai/document-block';
 
 // Errors that mean "this model is temporarily unable to serve requests"
 // (as opposed to a config problem like a missing key) are the ones worth
@@ -126,14 +128,13 @@ export function useConversations(defaultModelId: string) {
 
       const history = [...messages, userMessage].map((m) => ({
         role: m.role,
-        content: m.content,
+        content: appendDocumentBlocks(m.content, m.attachments),
         attachments: m.attachments,
       }));
 
       const skillsPrompt = await buildActiveSkillsSystemPrompt();
-      const messagesForRequest = skillsPrompt
-        ? [{ role: 'system' as const, content: skillsPrompt }, ...history]
-        : history;
+      const systemPrompt = skillsPrompt ? `${MAAR_SYSTEM_PROMPT}\n\n---\n\n${skillsPrompt}` : MAAR_SYSTEM_PROMPT;
+      const messagesForRequest = [{ role: 'system' as const, content: systemPrompt }, ...history];
 
       const controller = new AbortController();
       abortRef.current = controller;

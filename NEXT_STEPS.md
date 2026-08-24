@@ -152,3 +152,53 @@ doesn't work.
   I could not test this on a real device from this sandbox — please check
   it on an actual phone, especially the drawer's swipe-adjacent feel and
   the composer's behavior with the on-screen keyboard open.
+
+## Answer quality, document reading, code execution (latest round)
+
+Someone reported MAAR feeling "weak" compared to Claude — reasonable, since
+it was missing document reading, code execution, and had one real bug
+hurting answer quality. Addressed all three:
+
+- **Found and fixed a real bug**: `max_tokens` was capped at 2048 —
+  genuinely low, and the direct cause of answers feeling clipped short.
+  Raised to 8192.
+- **Added a baseline system prompt** (`src/lib/ai/system-prompt.ts`).
+  Previously MAAR sent no system message at all unless a skill was
+  active, which tends to produce noticeably terser answers than even
+  basic "be thorough, use good formatting" guidance. Skills now layer on
+  top of this base prompt rather than replacing it.
+- **Document reading, not just images**: PDF, DOCX, TXT, MD, CSV, JSON,
+  YAML, and log files are now extracted to plain text entirely in the
+  browser (`src/lib/attachments/extract-text.ts`, using `pdfjs-dist` and
+  `mammoth`) and folded into the outgoing message
+  (`src/lib/ai/document-block.ts`). This works with **any** model, not
+  just vision-capable ones, since it's just text by the time it reaches
+  the provider. Capped at 50,000 characters per document with a
+  truncation notice if exceeded.
+- **Code execution — sandboxed, client-side, explicit-click-only**.
+  JavaScript and HTML run in an iframe with `sandbox="allow-scripts"` and
+  deliberately *no* `allow-same-origin` — that combination gives the
+  iframe an opaque origin, so code running there cannot reach MAAR's own
+  cookies, localStorage, IndexedDB, or same-origin API routes, no matter
+  what it tries. Python runs via Pyodide (WASM CPython), loaded from its
+  official CDN only on first click, not bundled into the app. Nothing
+  executes automatically — this is a "Run" button on a code block the
+  person explicitly clicks, never something triggered by an uploaded file
+  or the model's own output.
+
+### Honestly, what's unverified here
+
+I could not get a headless browser running in this sandbox (network
+egress is locked to package registries, and Playwright's Chromium
+download is blocked) — so unlike the zip-extraction and GitHub-import
+logic earlier, **the actual JS-sandbox iframe/postMessage flow and the
+Pyodide loading path have not been run in a real browser by me.** What I
+could verify: the code that encodes a snippet before it reaches `eval()`
+round-trips correctly for tricky input (template literals, quotes,
+backticks, unicode — all pass). Please test the "Run" button on a real
+JS and Python snippet once this is deployed; if something's off, it's
+most likely in the postMessage event wiring, not the sandbox security
+model itself.
+
+Also not done: code execution for TypeScript (would need in-browser
+transpilation) and for any language beyond JS/Python/HTML.

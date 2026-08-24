@@ -40,7 +40,7 @@ export async function* streamOpenAICompatible(req: OpenAICompatibleRequest): Asy
     model: req.model.id,
     messages: req.messages.map((m) => ({ role: m.role, content: toOpenAIContent(m) })),
     temperature: req.temperature ?? 0.6,
-    max_tokens: req.maxTokens ?? 2048,
+    max_tokens: req.maxTokens ?? 8192,
     stream: true,
   };
 

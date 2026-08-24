@@ -1,6 +1,6 @@
 'use client';
 
-import { File as FileIcon, Music, Video, X } from 'lucide-react';
+import { File as FileIcon, FileText, Music, Video, X } from 'lucide-react';
 import type { ChatAttachment } from '@/lib/ai/types';
 
 interface Props {
@@ -26,9 +26,18 @@ export function AttachmentPreview({ attachments, onRemove }: Props) {
               {a.kind === 'audio' && <Music size={18} />}
               {a.kind === 'video' && <Video size={18} />}
               {a.kind === 'file' && <FileIcon size={18} />}
+              {a.kind === 'document' && <FileText size={18} />}
             </div>
           )}
-          <span className="max-w-[8rem] truncate py-2 text-xs text-ink-muted">{a.name}</span>
+          <div className="max-w-[9rem] py-1.5">
+            <p className="truncate text-xs text-ink-muted">{a.name}</p>
+            {a.kind === 'document' && a.extractedText && (
+              <p className="truncate text-[10px] text-ink-faint">
+                {a.extractedText.length.toLocaleString()} chars read
+                {a.extractedTextTruncated ? ' (truncated)' : ''}
+              </p>
+            )}
+          </div>
           {onRemove && (
             <button
               type="button"

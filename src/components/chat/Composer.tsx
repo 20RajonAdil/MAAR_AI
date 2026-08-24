@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
-import { ArrowUp, ImagePlus, Paperclip, Sparkles, Square, X } from 'lucide-react';
+import { AlertTriangle, ArrowUp, ImagePlus, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import { ModelSelector } from './ModelSelector';
 import { AttachmentPreview } from './AttachmentPreview';
 import { getModel, modelSupports } from '@/lib/ai/models';
 import type { ChatAttachment } from '@/lib/ai/types';
 import { cn, formatContextWindow } from '@/lib/utils/cn';
+import { DOCUMENT_EXTENSIONS, extractTextFromDocument } from '@/lib/attachments/extract-text';
 
 interface Props {
   modelId: string;
@@ -20,11 +21,18 @@ interface Props {
   onOpenSkills: () => void;
 }
 
-function kindForMime(mime: string): ChatAttachment['kind'] {
-  if (mime.startsWith('image/')) return 'image';
-  if (mime.startsWith('audio/')) return 'audio';
-  if (mime.startsWith('video/')) return 'video';
-  return 'file';
+function isDocumentFile(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  return DOCUMENT_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export function Composer({
@@ -42,6 +50,8 @@ export function Composer({
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+  const [processingCount, setProcessingCount] = useState(0);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,29 +65,52 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, []);
 
-  const addFiles = useCallback((files: FileList | File[]) => {
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setAttachments((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            name: file.name,
-            mimeType: file.type,
-            dataUrl: reader.result as string,
-            kind: kindForMime(file.type),
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
-  }, []);
+  const addFiles = useCallback(
+    async (files: FileList | File[]) => {
+      setAttachError(null);
+      for (const file of Array.from(files)) {
+        if (isDocumentFile(file)) {
+          setProcessingCount((n) => n + 1);
+          try {
+            const { text: extractedText, truncated, pageCount } = await extractTextFromDocument(file);
+            setAttachments((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                name: file.name,
+                mimeType: file.type || 'text/plain',
+                dataUrl: '',
+                kind: 'document',
+                extractedText,
+                extractedTextTruncated: truncated,
+              },
+            ]);
+            void pageCount;
+          } catch (err) {
+            setAttachError(err instanceof Error ? err.message : `Couldn't read ${file.name}.`);
+          } finally {
+            setProcessingCount((n) => n - 1);
+          }
+        } else if (file.type.startsWith('image/') && acceptsImages) {
+          const dataUrl = await readAsDataUrl(file);
+          setAttachments((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), name: file.name, mimeType: file.type, dataUrl, kind: 'image' },
+          ]);
+        } else if (file.type.startsWith('image/')) {
+          setAttachError(`${model?.label ?? 'This model'} doesn\u2019t accept images \u2014 try a multimodal model.`);
+        } else {
+          setAttachError(`MAAR can't read .${file.name.split('.').pop()} files yet.`);
+        }
+      }
+    },
+    [acceptsImages, model],
+  );
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
-    if (isGenerating) return;
+    if (isGenerating || processingCount > 0) return;
 
     if (imageMode) {
       if (!trimmed) return;
@@ -89,7 +122,7 @@ export function Composer({
     setText('');
     setAttachments([]);
     requestAnimationFrame(resize);
-  }, [text, attachments, isGenerating, imageMode, onSend, onGenerateImage, resize]);
+  }, [text, attachments, isGenerating, processingCount, imageMode, onSend, onGenerateImage, resize]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && sendOnEnter) {
@@ -108,6 +141,8 @@ export function Composer({
     setDragOver(false);
     if (!imageMode && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
   };
+
+  const fileAcceptList = [...DOCUMENT_EXTENSIONS, ...(acceptsImages ? ['image/*'] : [])].join(',');
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
@@ -181,15 +216,23 @@ export function Composer({
           </div>
         )}
 
+        {processingCount > 0 && !imageMode && (
+          <p className="px-3 pt-2 text-xs text-ink-faint">Reading {processingCount} file{processingCount === 1 ? '' : 's'}…</p>
+        )}
+        {attachError && !imageMode && (
+          <p className="flex items-center gap-1.5 px-3 pt-2 text-xs text-danger">
+            <AlertTriangle size={12} /> {attachError}
+          </p>
+        )}
+
         <div className="flex items-end gap-2 px-3 py-3">
           {!imageMode && (
             <>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={!acceptsImages}
-                title={acceptsImages ? 'Attach a file' : `${model?.label ?? 'This model'} doesn’t accept attachments`}
-                className="mb-1 shrink-0 rounded-lg p-2 text-ink-muted transition-colors hover:bg-base-raised2 hover:text-ink disabled:opacity-30"
+                title="Attach a document or image"
+                className="mb-1 shrink-0 rounded-lg p-2 text-ink-muted transition-colors hover:bg-base-raised2 hover:text-ink"
                 aria-label="Attach a file"
               >
                 <Paperclip size={18} />
@@ -198,7 +241,7 @@ export function Composer({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*"
+                accept={fileAcceptList}
                 className="hidden"
                 onChange={handleFileInput}
               />
@@ -232,7 +275,7 @@ export function Composer({
             <button
               type="button"
               onClick={handleSend}
-              disabled={!text.trim() && attachments.length === 0}
+              disabled={(!text.trim() && attachments.length === 0) || processingCount > 0}
               className={cn(
                 'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#12100A] transition-transform hover:brightness-95 disabled:opacity-30 disabled:hover:brightness-100',
                 imageMode ? 'bg-ice' : 'bg-gold',

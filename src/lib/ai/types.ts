@@ -50,7 +50,15 @@ export interface ChatAttachment {
   mimeType: string;
   /** data URL — attachments live only in IndexedDB / memory, never uploaded anywhere but the provider call itself. */
   dataUrl: string;
-  kind: 'image' | 'audio' | 'video' | 'file';
+  kind: 'image' | 'audio' | 'video' | 'file' | 'document';
+  /**
+   * For kind: 'document' — text extracted client-side (PDF/DOCX/plain
+   * text) and folded into the outgoing message content, so any model can
+   * "read" it, not just ones with native file-upload support.
+   */
+  extractedText?: string;
+  /** Whether extraction stopped early because the document exceeded MAX_DOCUMENT_CHARS. */
+  extractedTextTruncated?: boolean;
 }
 
 export interface ChatMessage {

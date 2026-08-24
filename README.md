@@ -126,6 +126,26 @@ the browser's built-in Web Speech API (`speechSynthesis`) — entirely
 client-side, no API key or network call involved. Voice **input** (talking
 to MAAR) isn't wired up yet; see `NEXT_STEPS.md`.
 
+## Documents (any model can "read" a file)
+
+The paperclip in the composer now accepts PDF, DOCX, TXT, MD, CSV, JSON,
+YAML, and log files, not just images. Text is extracted entirely in the
+browser (`pdfjs-dist` for PDF, `mammoth` for DOCX) and folded into the
+outgoing message before it reaches any provider — so this works with
+every model, including ones with no native file-upload support, capped
+at 50,000 characters per document. See `src/lib/attachments/extract-text.ts`
+and `src/lib/ai/document-block.ts`.
+
+## Code execution ("Run" on a code block)
+
+JavaScript, Python, and HTML code blocks get a "Run" button. Nothing
+executes automatically — only on an explicit click. JS/HTML run in an
+iframe sandboxed with `allow-scripts` and deliberately *no*
+`allow-same-origin`, which gives the iframe an opaque origin: it cannot
+reach MAAR's cookies, storage, or same-origin routes. Python runs via
+Pyodide (WASM CPython), loaded from its CDN on first use. See
+`src/lib/sandbox/run-js.ts` and `src/lib/sandbox/run-python.ts`.
+
 ## Skills (upload custom instructions)
 
 Settings → Skills lets you upload a plain-text `.md` or `.txt` file with
